@@ -3,12 +3,18 @@ import win32com.client
 from datetime import datetime, timedelta
 
 download_folder = r"C:\Users\pedro_moraes\Downloads"
-target_keyword = "ENC: Teste Impressora"  # Busca por esse assunto
-days_back = 3
-max_emails = 2
+target_keyword = "Message from IMPRESSORA_POS-VENDAS"  # Busca por esse assunto
+days_back = 15
+max_emails = 6
 
 outlook = win32com.client.Dispatch("Outlook.Application").GetNameSpace("MAPI")
 inbox = outlook.GetDefaultFolder(6)  # 6: Caixa de Entrada
+folder = (
+    inbox.Folders["Departamentos"]
+    .Folders["Administrativo"]
+    .Folders["Fiscal"]
+    .Folders["Notas Fiscais"]
+)  # Subpastas
 
 
 def salvar_pdfs(message, folder_name):
@@ -57,13 +63,15 @@ def percorrer_pastas(folder):
                     break
 
         for msg in alvo:
-            salvar_pdfs(msg, msg.Parent.Name)
+            salvar_pdfs(msg, folder.Name)
             msg.Unread = False
             msg.Save()
 
-        print(f"\nProcessados {len(alvo)} e-mails não lidos contendo '{target_keyword}'.")
+        print(
+            f"\nProcessados {len(alvo)} e-mails não lidos contendo '{target_keyword}'."
+        )
     except Exception as e:
         print(f"Erro na pasta '{folder.Name}': {e}")
 
 
-percorrer_pastas(inbox)
+percorrer_pastas(folder)
