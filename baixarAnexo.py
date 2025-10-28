@@ -46,17 +46,22 @@ def percorrer_pastas(folder):
         restriction = f"[Unread] = True AND [ReceivedTime] >= '{since_str}'"
         filtered = messages.Restrict(restriction)
 
-        count = 0
+        alvo = []
         for message in filtered:
-            if message.Class == 43:  # MailItem
-                subj = message.Subject or ""
-                if target_keyword.lower() in subj.lower():
-                    salvar_pdfs(message, folder.Name)
-                    count += 1
-                    if count >= max_emails:
-                        break
+            if (
+                message.Class == 43
+                and target_keyword.lower() in (message.Subject or "").lower()
+            ):
+                alvo.append(message)
+                if len(alvo) >= max_emails:
+                    break
 
-        print(f"\nProcessados {count} e-mails não lidos contendo '{target_keyword}'.")
+        for msg in alvo:
+            salvar_pdfs(msg, msg.Parent.Name)
+            msg.Unread = False
+            msg.Save()
+
+        print(f"\nProcessados {len(alvo)} e-mails não lidos contendo '{target_keyword}'.")
     except Exception as e:
         print(f"Erro na pasta '{folder.Name}': {e}")
 
