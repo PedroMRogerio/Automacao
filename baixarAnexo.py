@@ -1,22 +1,26 @@
 import os
 import win32com.client
+from datetime import datetime, timedelta
 
 download_folder = r"C:\Users\pedro_moraes\Downloads"
-target_keyword = "ENC: Teste Impressora" # Busca por esse assunto
+target_keyword = "ENC: Teste Impressora"  # Busca por esse assunto
+days_back = 3
+max_emails = 2
 
 outlook = win32com.client.Dispatch("Outlook.Application").GetNameSpace("MAPI")
 inbox = outlook.GetDefaultFolder(6)  # 6: Caixa de Entrada
+
 
 def salvar_pdfs(message, folder_name):
     for i in range(1, message.Attachments.Count + 1):
         att = message.Attachments.Item(i)
         filename = att.FileName.lower()
 
-        if filename.endswith(".msg"): # .msg = Item do Outlook
+        if filename.endswith(".msg"):  # .msg = Item do Outlook
             temp_path = os.path.join(download_folder, att.FileName)
             att.SaveAsFile(temp_path)
             try:
-                msg_item = outlook.Application.CreateItemFromTemplate(temp_path) # Acessa o item do outlook
+                msg_item = outlook.Application.CreateItemFromTemplate(temp_path)
                 for j in range(1, msg_item.Attachments.Count + 1):
                     inner_att = msg_item.Attachments.Item(j)
                     if inner_att.FileName.lower().endswith(".pdf"):
@@ -31,12 +35,30 @@ def salvar_pdfs(message, folder_name):
                 except:
                     pass
 
+
 def percorrer_pastas(folder):
     try:
-        for message in folder.Items:
-            if message.Class == 43 and target_keyword in (message.Subject or ""):
-                salvar_pdfs(message, folder.Name)
+        messages = folder.Items
+        messages.Sort("[ReceivedTime]", True)
+        since_dt = datetime.now() - timedelta(days=days_back)
+        since_str = since_dt.strftime("%m/%d/%Y %I:%M %p")
+
+        restriction = f"[Unread] = True AND [ReceivedTime] >= '{since_str}'"
+        filtered = messages.Restrict(restriction)
+
+        count = 0
+        for message in filtered:
+            if message.Class == 43:  # MailItem
+                subj = message.Subject or ""
+                if target_keyword.lower() in subj.lower():
+                    salvar_pdfs(message, folder.Name)
+                    count += 1
+                    if count >= max_emails:
+                        break
+
+        print(f"\nProcessados {count} e-mails não lidos contendo '{target_keyword}'.")
     except Exception as e:
         print(f"Erro na pasta '{folder.Name}': {e}")
+
 
 percorrer_pastas(inbox)
